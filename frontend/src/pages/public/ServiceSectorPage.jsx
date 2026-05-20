@@ -111,6 +111,7 @@ export function ServiceSectorPage() {
         </CardContent>
       </Card>
 
+
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -144,6 +145,7 @@ export function ServiceSectorPage() {
           ))}
         </div>
       )}
+
 
       {!loading && !workers.length && (
         <Card className="border-dashed">
