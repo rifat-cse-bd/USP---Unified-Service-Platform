@@ -13,7 +13,7 @@ export function CategoriesPage() {
   React.useEffect(() => {
     api
       .get('/services/categories')
-      .then(({ data }) => setCategories(data.categories || []))
+      .then(({ data }) => setCategories(data.majors || data.categories || []))
       .finally(() => setLoading(false));
   }, []);
 

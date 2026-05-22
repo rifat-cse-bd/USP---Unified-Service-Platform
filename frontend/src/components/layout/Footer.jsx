@@ -12,8 +12,8 @@ export function Footer() {
             </span>
             WorkSure
           </div>
-          <p className="text-sm text-muted-foreground">
-            Integrated service provider platform for cleaning, catering, security, and skilled home services across Bangladesh.
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Bangladesh&apos;s professional marketplace for cleaning, electrical, security, catering, childcare, and pet care — with verified workers, transparent pricing, and end-to-end booking.
           </p>
         </div>
         <div>

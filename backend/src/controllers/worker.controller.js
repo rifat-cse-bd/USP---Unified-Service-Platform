@@ -1,6 +1,7 @@
 import { body, param } from 'express-validator';
 import { query, queryOne, run } from '../config/database.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { resolveCategoryIds, categoryFilterSql } from '../utils/categories.js';
 
 export const workerValidators = {
   updateProfile: [
@@ -138,11 +139,17 @@ export const listWorkersPublic = asyncHandler(async (req, res) => {
     params.push(search, search);
   }
   if (category) {
-    where += ` AND EXISTS (
-      SELECT 1 FROM services sv JOIN categories c ON c.id = sv.category_id
-      WHERE sv.worker_id = w.id AND sv.is_active = 1 AND (c.slug = ? OR c.id = ?)
-    )`;
-    params.push(category, Number(category) || -1);
+    const categoryIds = await resolveCategoryIds(category);
+    if (categoryIds?.length) {
+      const placeholders = categoryIds.map(() => '?').join(', ');
+      where += ` AND EXISTS (
+        SELECT 1 FROM services sv
+        WHERE sv.worker_id = w.id AND sv.is_active = 1 AND sv.category_id IN (${placeholders})
+      )`;
+      params.push(...categoryIds);
+    } else {
+      where += ` AND 1 = 0`;
+    }
   }
   if (maxPrice != null && !Number.isNaN(maxPrice)) {
     where += ` AND w.hourly_rate <= ?`;

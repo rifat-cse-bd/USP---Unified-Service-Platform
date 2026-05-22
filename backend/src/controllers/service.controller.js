@@ -1,6 +1,7 @@
 import { body, param } from 'express-validator';
 import { query, queryOne, run } from '../config/database.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { resolveCategoryIds, categoryFilterSql } from '../utils/categories.js';
 
 function slugify(text) {
   return String(text)
@@ -28,8 +29,17 @@ export const serviceValidators = {
 };
 
 export const listCategories = asyncHandler(async (_req, res) => {
-  const rows = await query(`SELECT * FROM categories ORDER BY name`);
-  res.json({ success: true, categories: rows });
+  const rows = await query(
+    `SELECT id, parent_id, name, slug, icon, description, image_url, sort_order
+     FROM categories ORDER BY sort_order, name`
+  );
+  const majors = rows
+    .filter((c) => !c.parent_id)
+    .map((major) => ({
+      ...major,
+      subfeatures: rows.filter((c) => c.parent_id === major.id),
+    }));
+  res.json({ success: true, majors, categories: rows });
 });
 
 export const listServices = asyncHandler(async (req, res) => {
@@ -47,8 +57,14 @@ export const listServices = asyncHandler(async (req, res) => {
   let where = `WHERE s.is_active = 1 AND u.is_banned = 0`;
   const params = [];
   if (category) {
-    where += ` AND (c.slug = ? OR c.id = ?)`;
-    params.push(category, Number(category) || -1);
+    const categoryIds = await resolveCategoryIds(category);
+    if (categoryIds?.length) {
+      const { clause, params: catParams } = categoryFilterSql(categoryIds, 'c');
+      where += clause;
+      params.push(...catParams);
+    } else {
+      where += ` AND 1 = 0`;
+    }
   }
   if (minPrice != null && !Number.isNaN(minPrice)) {
     where += ` AND s.base_price >= ?`;

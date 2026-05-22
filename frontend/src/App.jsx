@@ -60,7 +60,8 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/services" element={<ServicesPage />} />
-        <Route path="/services/:slug" element={<ServiceSectorPage />} />
+        <Route path="/services/:majorSlug/:subSlug" element={<ServiceSectorPage />} />
+        <Route path="/services/:majorSlug" element={<ServiceSectorPage />} />
         <Route path="/offer/:id" element={<ServiceDetailPage />} />
         <Route path="/categories" element={<Navigate to="/services" replace />} />
         <Route path="/categories/:slug" element={<Navigate to="/services/:slug" replace />} />

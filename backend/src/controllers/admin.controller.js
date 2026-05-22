@@ -105,9 +105,12 @@ export const verifyDocument = asyncHandler(async (req, res) => {
 
 export const listBookingsAdmin = asyncHandler(async (_req, res) => {
   const rows = await query(
-    `SELECT b.*, s.title AS service_title, cust.full_name AS customer_name, wu.full_name AS worker_name
+    `SELECT b.*, s.title AS service_title, c.name AS category_name,
+            cust.full_name AS customer_name, cust.email AS customer_email, cust.phone AS customer_phone,
+            wu.full_name AS worker_name, wu.email AS worker_email, wu.phone AS worker_phone
      FROM bookings b
      JOIN services s ON s.id = b.service_id
+     JOIN categories c ON c.id = s.category_id
      JOIN users cust ON cust.id = b.customer_id
      JOIN workers w ON w.id = b.worker_id
      JOIN users wu ON wu.id = w.user_id
@@ -118,9 +121,12 @@ export const listBookingsAdmin = asyncHandler(async (_req, res) => {
 
 export const listPaymentsAdmin = asyncHandler(async (_req, res) => {
   const rows = await query(
-    `SELECT p.*, s.title AS service_title FROM payments p
+    `SELECT p.*, s.title AS service_title, b.status AS booking_status,
+            u.full_name AS payer_name, u.email AS payer_email
+     FROM payments p
      JOIN bookings b ON b.id = p.booking_id
      JOIN services s ON s.id = b.service_id
+     JOIN users u ON u.id = p.payer_id
      ORDER BY p.id DESC LIMIT 200`
   );
   res.json({ success: true, data: rows });
@@ -128,7 +134,14 @@ export const listPaymentsAdmin = asyncHandler(async (_req, res) => {
 
 export const listReviewsAdmin = asyncHandler(async (_req, res) => {
   const rows = await query(
-    `SELECT r.*, u.full_name AS reviewer_name FROM reviews r JOIN users u ON u.id = r.reviewer_id ORDER BY r.id DESC LIMIT 200`
+    `SELECT r.*, u.full_name AS reviewer_name, s.title AS service_title, wu.full_name AS worker_name
+     FROM reviews r
+     JOIN users u ON u.id = r.reviewer_id
+     JOIN bookings b ON b.id = r.booking_id
+     JOIN services s ON s.id = b.service_id
+     JOIN workers w ON w.id = r.worker_id
+     JOIN users wu ON wu.id = w.user_id
+     ORDER BY r.id DESC LIMIT 200`
   );
   res.json({ success: true, data: rows });
 });

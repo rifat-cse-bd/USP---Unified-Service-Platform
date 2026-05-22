@@ -18,7 +18,8 @@ export function WorkerServicesPage() {
       api.get('/workers/me'),
       api.get('/services', { params: { limit: 100 } }),
     ]);
-    setCategories(cats.categories || []);
+    const all = cats.categories || [];
+    setCategories(all.filter((c) => c.parent_id));
     const wid = me.worker?.id;
     setServices((svc.data || []).filter((s) => s.worker_table_id === wid));
   };

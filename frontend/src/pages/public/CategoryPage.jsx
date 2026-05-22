@@ -28,7 +28,11 @@ export function CategoryPage() {
 
   React.useEffect(() => {
     api.get('/services/categories').then(({ data }) => {
-      const cat = (data.categories || []).find((c) => c.slug === slug);
+      const flat = data.categories || [];
+      const cat =
+        flat.find((c) => c.slug === slug) ||
+        (data.majors || []).find((m) => m.slug === slug) ||
+        (data.majors || []).flatMap((m) => m.subfeatures || []).find((s) => s.slug === slug);
       setCategory(cat || { name: slug, slug, description: '' });
     });
   }, [slug]);

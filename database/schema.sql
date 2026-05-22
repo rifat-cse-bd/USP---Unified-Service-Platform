@@ -53,13 +53,18 @@ CREATE TABLE users (
 
 CREATE TABLE categories (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  parent_id INT UNSIGNED NULL,
   name VARCHAR(128) NOT NULL,
   slug VARCHAR(160) NOT NULL,
   icon VARCHAR(64) NULL,
   description VARCHAR(512) NULL,
+  image_url VARCHAR(512) NULL,
+  sort_order INT UNSIGNED NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_categories_slug (slug)
+  UNIQUE KEY uq_categories_slug (slug),
+  KEY idx_categories_parent (parent_id),
+  CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE workers (

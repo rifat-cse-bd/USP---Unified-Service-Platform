@@ -18,9 +18,10 @@ const LAST = [
   'Miah', 'Sarkar', 'Das', 'Khatun', 'Malik', 'Haque', 'Karim', 'Sultana', 'Parvin', 'Jahan',
 ];
 const CITIES = ['Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Gazipur', 'Narayanganj'];
-const CATEGORY_SLUGS = [
-  'cleaning', 'electrician', 'plumbing', 'security', 'catering', 'babysitting', 'pet-care', 'ac-repair', 'home-maintenance',
-];
+
+const catalogPath = path.join(__dirname, '../../database/service-catalog.json');
+const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+const SUB_CATEGORY_SLUGS = catalog.majors.flatMap((m) => m.subfeatures.map((s) => s.slug));
 
 function pick(arr, i) {
   return arr[i % arr.length];
@@ -43,18 +44,23 @@ async function main() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await conn.query(schema);
 
-  await conn.query(
-    `INSERT INTO categories (name, slug, icon, description) VALUES
-    ('Cleaning','cleaning','Sparkles','Home and office cleaning'),
-    ('Electrician','electrician','Zap','Wiring and electrical repairs'),
-    ('Plumbing','plumbing','Droplets','Pipes, leaks, and fixtures'),
-    ('Security','security','Shield','Guards and patrol'),
-    ('Catering','catering','UtensilsCrossed','Events and daily meals'),
-    ('Babysitting','babysitting','Baby','Child care at home'),
-    ('Pet Care','pet-care','PawPrint','Walking, sitting, and grooming'),
-    ('AC Repair','ac-repair','Wind','AC installation and servicing'),
-    ('Home Maintenance','home-maintenance','Wrench','General repairs and upkeep')`
-  );
+  let sortOrder = 0;
+  for (const major of catalog.majors) {
+    const [majorRes] = await conn.query(
+      `INSERT INTO categories (parent_id, name, slug, icon, description, image_url, sort_order)
+       VALUES (NULL, ?, ?, ?, ?, ?, ?)`,
+      [major.name, major.slug, major.icon, major.description, `/images/${major.image}`, sortOrder++]
+    );
+    const majorId = majorRes.insertId;
+    let subOrder = 0;
+    for (const sub of major.subfeatures) {
+      await conn.query(
+        `INSERT INTO categories (parent_id, name, slug, icon, description, image_url, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [majorId, sub.name, sub.slug, major.icon, sub.description, `/images/${sub.image}`, subOrder++]
+      );
+    }
+  }
 
   const password = await bcrypt.hash('Password123!', 12);
 
@@ -72,7 +78,7 @@ async function main() {
   const WORKER_COUNT = 50;
 
   for (let i = 1; i <= WORKER_COUNT; i++) {
-    const catSlug = CATEGORY_SLUGS[(i - 1) % CATEGORY_SLUGS.length];
+    const catSlug = SUB_CATEGORY_SLUGS[(i - 1) % SUB_CATEGORY_SLUGS.length];
     const catName = slugToName[catSlug];
     const fullName = `${pick(FIRST, i)} ${pick(LAST, i * 3)}`;
     const email = `worker${i}@worksure.com`;
@@ -123,12 +129,188 @@ async function main() {
     );
   }
 
-  console.info(`Seed complete: ${WORKER_COUNT} workers across ${CATEGORY_SLUGS.length} service sectors.`);
+  await seedDemoData(conn);
+
+  console.info(`Seed complete: ${WORKER_COUNT} workers across ${catalog.majors.length} majors and ${SUB_CATEGORY_SLUGS.length} sub-features.`);
+  console.info('Demo bookings, payments, reviews, complaints, and documents included.');
   console.info('Logins (password Password123!):');
   console.info('  admin@worksure.com');
   console.info('  customer@worksure.com');
   console.info('  worker1@worksure.com … worker50@worksure.com');
   await conn.end();
+}
+
+async function seedDemoData(conn) {
+  const [[customer]] = await conn.query(`SELECT id FROM users WHERE email = 'customer@worksure.com'`);
+  const [[admin]] = await conn.query(`SELECT id FROM users WHERE email = 'admin@worksure.com'`);
+  if (!customer) return;
+
+  const [services] = await conn.query(
+    `SELECT s.id AS service_id, s.worker_id, s.base_price, s.title FROM services s ORDER BY s.id LIMIT 32`
+  );
+  if (!services.length) return;
+
+  const statuses = [
+    ...Array(6).fill('pending'),
+    ...Array(5).fill('accepted'),
+    ...Array(5).fill('in_progress'),
+    ...Array(12).fill('completed'),
+    ...Array(2).fill('cancelled'),
+    ...Array(2).fill('rejected'),
+  ];
+  const providers = ['bkash', 'nagad', 'mock_card', 'stripe'];
+  const completedBookings = [];
+
+  for (let i = 0; i < Math.min(services.length, statuses.length); i++) {
+    const svc = services[i];
+    const status = statuses[i];
+    const scheduled = new Date();
+    scheduled.setDate(scheduled.getDate() + (i - 10));
+    scheduled.setHours(9 + (i % 8), 0, 0, 0);
+
+    const [bRes] = await conn.query(
+      `INSERT INTO bookings (customer_id, worker_id, service_id, status, scheduled_at, address, notes, total_price, tracking_note)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        customer.id,
+        svc.worker_id,
+        svc.service_id,
+        status,
+        scheduled,
+        `${pick(CITIES, i)}, Road ${(i % 20) + 1} — demo address`,
+        `WorkSure demo booking #${i + 1}. Customer requested standard scope.`,
+        Number(svc.base_price),
+        status === 'in_progress' ? 'Worker en route — demo tracking' : null,
+      ]
+    );
+    const bookingId = bRes.insertId;
+
+    await conn.query(
+      `INSERT INTO booking_status_history (booking_id, status, changed_by, note) VALUES (?,?,?,?)`,
+      [bookingId, 'pending', customer.id, 'Booking created']
+    );
+    if (status !== 'pending') {
+      await conn.query(
+        `INSERT INTO booking_status_history (booking_id, status, changed_by, note) VALUES (?,?,?,?)`,
+        [bookingId, status, admin?.id || customer.id, `Updated to ${status} (seed)`]
+      );
+    }
+
+    if (status === 'completed') {
+      completedBookings.push({ id: bookingId, worker_id: svc.worker_id, price: Number(svc.base_price), i });
+    } else if (status === 'in_progress' || status === 'accepted') {
+      const amount = Number(svc.base_price);
+      const commission = Math.round(amount * 0.2 * 100) / 100;
+      const workerPayout = Math.round((amount - commission) * 100) / 100;
+      await conn.query(
+        `INSERT INTO payments (booking_id, payer_id, amount, platform_commission, worker_payout, provider, status, transaction_ref, invoice_number)
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [
+          bookingId,
+          customer.id,
+          amount,
+          commission,
+          workerPayout,
+          providers[i % providers.length],
+          'pending',
+          null,
+          `WS-PEND-${bookingId}`,
+        ]
+      );
+    }
+  }
+
+  const reviewComments = [
+    'Very professional and on time. Would book again.',
+    'Great communication throughout the job. Highly recommended.',
+    'Exceeded expectations — thorough and polite.',
+    'Good value for money. Minor delay but quality was excellent.',
+    'Outstanding work. The platform made payment easy.',
+  ];
+
+  for (const b of completedBookings) {
+    const amount = b.price;
+    const commission = Math.round(amount * 0.2 * 100) / 100;
+    const workerPayout = Math.round((amount - commission) * 100) / 100;
+    const provider = providers[b.i % providers.length];
+    await conn.query(
+      `INSERT INTO payments (booking_id, payer_id, amount, platform_commission, worker_payout, provider, status, transaction_ref, invoice_number)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        b.id,
+        customer.id,
+        amount,
+        commission,
+        workerPayout,
+        provider,
+        'completed',
+        `TXN-DEMO-${b.id}`,
+        `WS-INV-${String(b.id).padStart(5, '0')}`,
+      ]
+    );
+    await conn.query(
+      `INSERT INTO reviews (booking_id, reviewer_id, worker_id, rating, comment) VALUES (?,?,?,?,?)`,
+      [
+        b.id,
+        customer.id,
+        b.worker_id,
+        4 + (b.i % 2),
+        reviewComments[b.i % reviewComments.length],
+      ]
+    );
+  }
+
+  const [[worker1]] = await conn.query(`SELECT id FROM workers ORDER BY id LIMIT 1`);
+  const complaints = [
+    { subject: 'Late arrival for scheduled cleaning', message: 'Worker arrived 45 minutes late without prior notice.', status: 'open' },
+    { subject: 'Payment not reflected in dashboard', message: 'Completed bKash payment but booking still shows pending payment.', status: 'reviewing' },
+    { subject: 'Service scope mismatch', message: 'Electrician task did not include materials as described in listing.', status: 'open' },
+    { subject: 'Rude communication', message: 'Unprofessional messages during catering event setup.', status: 'resolved', note: 'Spoke with worker — warning issued.' },
+    { subject: 'Refund request — cancelled booking', message: 'Booking cancelled by worker; customer requests refund within 48h.', status: 'reviewing' },
+    { subject: 'Duplicate charge', message: 'Customer charged twice for the same security shift.', status: 'resolved', note: 'Duplicate payment reversed in demo ledger.' },
+    { subject: 'Profile information inaccurate', message: 'Worker profile years of experience does not match intake form.', status: 'dismissed', note: 'No policy violation found after review.' },
+    { subject: 'Pet sitter no-show', message: 'At-home pet sitting booking — sitter did not arrive.', status: 'open' },
+  ];
+
+  for (const c of complaints) {
+    await conn.query(
+      `INSERT INTO complaints (reporter_id, subject_user_id, booking_id, subject, message, status, resolution_note)
+       VALUES (?,?,?,?,?,?,?)`,
+      [
+        customer.id,
+        null,
+        null,
+        c.subject,
+        c.message,
+        c.status,
+        c.note || null,
+      ]
+    );
+  }
+
+  const [workers] = await conn.query(`SELECT id FROM workers ORDER BY id LIMIT 12`);
+  for (let i = 0; i < workers.length; i++) {
+    const wid = workers[i].id;
+    const docStatus = i < 5 ? 'pending' : i < 9 ? 'approved' : 'rejected';
+    await conn.query(
+      `INSERT INTO worker_documents (worker_id, doc_type, file_url, status, admin_note, reviewed_by, reviewed_at)
+       VALUES (?,?,?,?,?,?,?)`,
+      [
+        wid,
+        i % 2 === 0 ? 'nid' : 'certificate',
+        `https://placehold.co/600x400?text=Doc-${wid}`,
+        docStatus,
+        docStatus === 'pending' ? null : 'Reviewed during seed',
+        docStatus === 'pending' ? null : admin?.id || null,
+        docStatus === 'pending' ? null : new Date(),
+      ]
+    );
+    if (docStatus === 'approved') {
+      await conn.query(`UPDATE workers SET is_verified = 1, verified_at = NOW() WHERE id = ?`, [wid]);
+    }
+  }
+
+  console.info(`  Demo: ${Math.min(services.length, statuses.length)} bookings, ${completedBookings.length} completed w/ payments & reviews, ${complaints.length} complaints`);
 }
 
 main().catch((e) => {
