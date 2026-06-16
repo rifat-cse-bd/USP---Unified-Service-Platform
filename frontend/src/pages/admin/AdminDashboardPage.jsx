@@ -12,9 +12,10 @@ import {
   Wrench,
 } from 'lucide-react';
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+import { DashboardPageHeader, QuickActionCard } from '@/components/dashboard/dashboardUi';
 import {
   AdminEmptyState,
-  AdminPageHeader,
   AdminStatCard,
   formatMoney,
   StatusBadge,
@@ -28,13 +29,16 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pi
 const COLORS = ['#6366f1', '#22c55e', '#f97316', '#ec4899', '#94a3b8', '#06b6d4'];
 
 const QUICK_LINKS = [
-  { to: '/admin/orders', label: 'Orders', desc: 'Booking pipeline', icon: CalendarCheck },
-  { to: '/admin/payments', label: 'Payments', desc: 'Revenue & payouts', icon: CreditCard },
-  { to: '/admin/verify', label: 'Verify', desc: 'Worker documents', icon: FileCheck },
-  { to: '/admin/complaints', label: 'Complaints', desc: 'Support queue', icon: AlertTriangle },
+  { to: '/admin/orders', icon: CalendarCheck, title: 'Orders', description: 'Booking pipeline', accent: true },
+  { to: '/admin/payments', icon: CreditCard, title: 'Payments', description: 'Revenue & payouts' },
+  { to: '/admin/verify', icon: FileCheck, title: 'Verify', description: 'Worker documents' },
+  { to: '/admin/complaints', icon: AlertTriangle, title: 'Complaints', description: 'Support queue' },
+  { to: '/admin/users', icon: Users, title: 'Users', description: 'Manage accounts' },
+  { to: '/admin/analytics', icon: LayoutDashboard, title: 'Analytics', description: 'Reports & charts' },
 ];
 
 export function AdminDashboardPage() {
+  const { user } = useAuth();
   const [stats, setStats] = React.useState(null);
   const [analytics, setAnalytics] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -76,11 +80,11 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <AdminPageHeader
-        eyebrow="Control center"
+      <DashboardPageHeader
+        user={user}
         title="Admin overview"
         description="Monitor users, bookings, revenue, verification queue, and support complaints across the WorkSure marketplace."
-        action={
+        actions={
           <Button asChild variant="outline" className="rounded-xl gap-2">
             <Link to="/admin/analytics">
               Full analytics <ArrowRight className="h-4 w-4" />
@@ -98,21 +102,9 @@ export function AdminDashboardPage() {
         <AdminStatCard label="Open complaints" value={stats.openComplaints} hint="Needs admin attention" icon={AlertTriangle} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {QUICK_LINKS.map((item) => (
-          <Link key={item.to} to={item.to} className="group">
-            <Card className="card-lift h-full border-border/70">
-              <CardContent className="flex items-center gap-4 p-5">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <item.icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="font-semibold group-hover:text-primary">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <QuickActionCard key={item.to} {...item} />
         ))}
       </div>
 

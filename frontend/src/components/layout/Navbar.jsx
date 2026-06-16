@@ -4,6 +4,7 @@ import { Menu, Moon, Sun, LogOut, LayoutDashboard, Sparkles } from 'lucide-react
 import * as React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { UserIdentityBadge } from '@/components/dashboard/dashboardUi';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -50,27 +51,28 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
           <Button type="button" variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
           {user ? (
             <>
-              <Button variant="secondary" asChild>
+              <UserIdentityBadge user={user} size="compact" />
+              <Button variant="secondary" asChild className="rounded-xl">
                 <Link to={dash}>
                   <LayoutDashboard className="h-4 w-4" /> Dashboard
                 </Link>
               </Button>
-              <Button variant="outline" onClick={() => { logout(); navigate('/'); }}>
+              <Button variant="outline" className="rounded-xl" onClick={() => { logout(); navigate('/'); }}>
                 <LogOut className="h-4 w-4" /> Log out
               </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" asChild className="rounded-xl">
                 <Link to="/login">Log in</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="rounded-xl">
                 <Link to="/register">Get started</Link>
               </Button>
             </>
@@ -78,6 +80,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
+          {user ? <UserIdentityBadge user={user} size="compact" showRole={false} /> : null}
           <Button type="button" variant="ghost" size="icon" onClick={toggle}>
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
@@ -96,6 +99,11 @@ export function Navbar() {
             className="border-t border-border/60 md:hidden"
           >
             <div className="flex flex-col gap-1 px-4 py-3">
+              {user ? (
+                <div className="mb-2 px-1">
+                  <UserIdentityBadge user={user} className="w-full" />
+                </div>
+              ) : null}
               {links.map((l) => (
                 <Link key={l.to} to={l.to} className="rounded-lg px-3 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
                   {l.label}

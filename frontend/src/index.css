@@ -30,6 +30,9 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  a, button {
+    @apply transition-colors duration-200;
+  }
 }
 
 .glass {

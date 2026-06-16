@@ -2,6 +2,8 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import api from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
+import { ChatLinkButton } from '@/components/dashboard/dashboardUi';
+import { StatusBadge } from '@/components/admin/adminUi';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -33,17 +35,15 @@ export function CustomerOrdersPage() {
                   <div className="font-medium">{b.service_title}</div>
                   <div className="text-xs text-muted-foreground">{b.scheduled_at}</div>
                 </div>
-                <Badge>{b.status}</Badge>
+                <StatusBadge status={b.status} />
                 <div className="flex flex-wrap gap-2">
                   {!isPaid && (
-                    <Button asChild size="sm">
+                    <Button asChild size="sm" className="rounded-xl">
                       <Link to={`/customer/pay/${b.id}`}>Pay with Stripe</Link>
                     </Button>
                   )}
                   {isPaid ? <Badge variant="success">Paid</Badge> : null}
-                  <Link className="text-sm text-primary underline" to={`/bookings/${b.id}/chat`}>
-                    Chat
-                  </Link>
+                  <ChatLinkButton to={`/bookings/${b.id}/chat`} />
                 </div>
               </CardContent>
             </Card>

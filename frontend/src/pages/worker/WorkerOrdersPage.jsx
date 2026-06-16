@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { ChatLinkButton } from '@/components/dashboard/dashboardUi';
 import api from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,9 +79,7 @@ export function WorkerOrdersPage() {
                 <span className="self-center text-xs text-muted-foreground">No actions available</span>
               )}
               {b.status !== 'rejected' && b.status !== 'cancelled' && (
-                <Link className="self-center text-sm text-primary underline" to={`/bookings/${b.id}/chat`}>
-                  Chat
-                </Link>
+                <ChatLinkButton to={`/bookings/${b.id}/chat`} />
               )}
             </div>
           </CardContent>

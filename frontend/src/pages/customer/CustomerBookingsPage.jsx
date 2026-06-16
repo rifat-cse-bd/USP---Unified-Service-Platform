@@ -2,7 +2,8 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import api from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { ChatLinkButton } from '@/components/dashboard/dashboardUi';
+import { StatusBadge } from '@/components/admin/adminUi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,13 +52,11 @@ export function CustomerBookingsPage() {
                   #{b.id} · {new Date(b.scheduled_at).toLocaleString()}
                 </p>
               </div>
-              <Badge>{b.status}</Badge>
+              <StatusBadge status={b.status} />
               <div className="flex flex-wrap gap-2">
-                <Link className="text-sm text-primary underline" to={`/bookings/${b.id}/chat`}>
-                  Chat
-                </Link>
+                <ChatLinkButton to={`/bookings/${b.id}/chat`} />
                 {b.status === 'completed' && (
-                  <Button size="sm" variant="outline" onClick={() => setReviewFor(b)}>
+                  <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setReviewFor(b)}>
                     Leave review
                   </Button>
                 )}

@@ -55,17 +55,15 @@ export function CustomerPaymentsPage() {
           </Card>
         ))}
         {!rows.length && (
-          <p className="text-sm text-muted-foreground">
-            No payments yet.{' '}
-            <Link className="text-primary underline" to="/customer/checkout">
-              Checkout
-            </Link>{' '}
-            or pay from{' '}
-            <Link className="text-primary underline" to="/customer/orders">
-              Current orders
-            </Link>
-            .
-          </p>
+          <div className="flex flex-wrap gap-2 py-4">
+            <p className="w-full text-sm text-muted-foreground">No payments yet.</p>
+            <Button asChild size="sm" variant="outline" className="rounded-xl">
+              <Link to="/customer/checkout">Go to checkout</Link>
+            </Button>
+            <Button asChild size="sm" className="rounded-xl">
+              <Link to="/customer/orders">View current orders</Link>
+            </Button>
+          </div>
         )}
       </div>
     </div>
