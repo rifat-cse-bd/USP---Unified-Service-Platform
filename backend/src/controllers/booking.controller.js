@@ -3,6 +3,7 @@ import { query, queryOne, run } from '../config/database.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { notifyUser, emitBookingUpdate } from '../utils/notifications.js';
 import { recordBookingStatus } from '../utils/bookingHistory.js';
+import { toMysqlDatetime } from '../utils/datetime.js';
 
 export const bookingValidators = {
   create: [
@@ -27,10 +28,11 @@ export const createBooking = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Cannot book your own service' });
   }
   const total_price = Number(service.base_price);
+  const scheduledAtMysql = toMysqlDatetime(scheduled_at);
   const r = await run(
     `INSERT INTO bookings (customer_id, worker_id, service_id, scheduled_at, address, notes, total_price, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
-    [req.user.id, service.worker_pk, service_id, scheduled_at, address, notes || null, total_price]
+    [req.user.id, service.worker_pk, service_id, scheduledAtMysql, address, notes || null, total_price]
   );
   const booking = await queryOne(`SELECT * FROM bookings WHERE id = ?`, [r.insertId]);
   await recordBookingStatus(booking.id, 'pending', req.user.id, 'Booking created');

@@ -42,7 +42,7 @@ export function ServiceDetailPage() {
       toast({ title: 'Booking created', description: 'Check your customer dashboard.' });
       navigate('/customer/orders');
     } catch (e) {
-      toast({ title: 'Could not book', description: e.response?.data?.message || 'Error' });
+      toast({ title: 'Could not book', description: e.response?.data?.message || e.message || 'Error' });
     }
   };
 
@@ -59,7 +59,8 @@ export function ServiceDetailPage() {
   const addCart = async () => {
     if (!user) return navigate('/login');
     try {
-      await api.post('/cart/items', { service_id: Number(id), quantity: 1, scheduled_at: scheduled || null });
+      const scheduled_at = scheduled ? new Date(scheduled).toISOString() : null;
+      await api.post('/cart/items', { service_id: Number(id), quantity: 1, scheduled_at });
       toast({ title: 'Added to cart' });
     } catch (e) {
       toast({ title: 'Cart error', description: e.response?.data?.message || 'Error' });

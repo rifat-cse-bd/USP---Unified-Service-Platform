@@ -1,6 +1,7 @@
 import { body, param } from 'express-validator';
 import { query, queryOne, run } from '../config/database.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { toMysqlDatetime, defaultScheduledAt } from '../utils/datetime.js';
 
 export const cartValidators = {
   add: [
@@ -42,7 +43,7 @@ export const addToCart = asyncHandler(async (req, res) => {
   await run(
     `INSERT INTO cart_items (cart_id, service_id, quantity, scheduled_at) VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity), scheduled_at = COALESCE(VALUES(scheduled_at), scheduled_at)`,
-    [cartId, service_id, quantity, scheduled_at || null]
+    [cartId, service_id, quantity, scheduled_at ? toMysqlDatetime(scheduled_at) : null]
   );
   res.status(201).json({ success: true });
 });
@@ -51,7 +52,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
   const cartId = await getOrCreateCart(req.user.id);
   await run(`UPDATE cart_items SET quantity = ?, scheduled_at = ? WHERE id = ? AND cart_id = ?`, [
     req.body.quantity,
-    req.body.scheduled_at || null,
+    req.body.scheduled_at ? toMysqlDatetime(req.body.scheduled_at) : null,
     req.params.itemId,
     cartId,
   ]);
@@ -79,7 +80,7 @@ export const checkoutCart = asyncHandler(async (req, res) => {
       [item.service_id]
     );
     if (!service) continue;
-    const scheduled_at = item.scheduled_at || new Date(Date.now() + 86400000).toISOString().slice(0, 19).replace('T', ' ');
+    const scheduled_at = item.scheduled_at ? toMysqlDatetime(item.scheduled_at) : defaultScheduledAt();
     const address = req.body.default_address || 'Address to be confirmed with worker';
     const r = await run(
       `INSERT INTO bookings (customer_id, worker_id, service_id, scheduled_at, address, notes, total_price, status)
